@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_description">O Foco usa este serviço apenas para saber qual app está aberto e bloquear os apps que você escolheu. Nenhum texto ou dado da tela é lido ou enviado.</string>
+</resources>

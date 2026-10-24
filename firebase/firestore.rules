@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Token de push de cada usuário (cada um só escreve o próprio).
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /pairs/{pairId} {
+      function isOwner()   { return request.auth != null && resource.data.ownerUid == request.auth.uid; }
+      function isPartner() { return request.auth != null && resource.data.partnerUid == request.auth.uid; }
+
+      // Dono cria o convite (sem parceiro ainda).
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.partnerUid == null;
+
+      allow read: if isOwner() || isPartner();
+
+      // Parceiro entra UMA vez, provando que conhece o segredo do QR.
+      // Dono nunca consegue alterar o pareamento.
+      allow update: if request.auth != null
+                    && resource.data.partnerUid == null
+                    && request.resource.data.joinSecret == resource.data.joinSecret
+                    && request.resource.data.partnerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && request.auth.uid != resource.data.ownerUid;
+
+      // Só o parceiro encerra o pareamento.
+      allow delete: if isPartner();
+
+      match /requests/{reqId} {
+        function pair() { return get(/databases/$(database)/documents/pairs/$(pairId)).data; }
+
+        // Dono cria pedidos sempre como "pending".
+        allow create: if request.auth != null
+                      && pair().ownerUid == request.auth.uid
+                      && pair().partnerUid != null
+                      && request.resource.data.status == 'pending'
+                      && !('grantedUntil' in request.resource.data);
+
+        allow read: if request.auth != null
+                    && (pair().ownerUid == request.auth.uid
+                        || pair().partnerUid == request.auth.uid);
+
+        // Só o parceiro decide; só pode sair de "pending" e a liberação máxima é 12h.
+        allow update: if request.auth != null
+                      && pair().partnerUid == request.auth.uid
+                      && resource.data.status == 'pending'
+                      && request.resource.data.status in ['approved', 'denied']
+                      && (request.resource.data.status == 'denied'
+                          || request.resource.data.grantedUntil <= request.time + duration.value(12, 'h'));
+
+        allow delete: if false;
+      }
+    }
+  }
+}
