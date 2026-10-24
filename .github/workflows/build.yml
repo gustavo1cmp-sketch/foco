@@ -2,8 +2,11 @@ name: Build e análise
 
 on:
   push:
-  pull_request:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   android:
@@ -19,12 +22,29 @@ jobs:
           flutter create --org com.foco --project-name foco --platforms=android,ios .
           cp -R android_overlay/app/src/main/* android/app/src/main/
           cp -R ios_overlay/Runner/* ios/Runner/
-          flutter pub get
+          flutter pub get 2>&1 | tee /tmp/pub.txt
       - name: Análise estática
-        run: flutter analyze
+        id: analyze
+        continue-on-error: true
+        run: flutter analyze --no-pub 2>&1 | tee /tmp/analyze.txt; exit ${PIPESTATUS[0]}
       - name: Compilar APK (debug)
-        run: flutter build apk --debug
+        id: build
+        continue-on-error: true
+        run: flutter build apk --debug 2>&1 | tee /tmp/build.txt; exit ${PIPESTATUS[0]}
+      - name: Publicar logs na branch ci-logs
+        if: always()
+        run: |
+          mkdir -p /tmp/logs
+          cp /tmp/pub.txt /tmp/analyze.txt /tmp/build.txt /tmp/logs/ 2>/dev/null || true
+          echo "analyze=${{ steps.analyze.outcome }} build=${{ steps.build.outcome }} commit=${{ github.sha }}" > /tmp/logs/summary.txt
+          cd /tmp/logs && git init -q -b ci-logs && git config user.email ci@example.com && git config user.name ci
+          git add -A && git commit -qm "logs ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-logs
       - uses: actions/upload-artifact@v4
+        if: steps.build.outcome == 'success'
         with:
           name: foco-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+      - name: Falhar se algo deu errado
+        if: steps.analyze.outcome == 'failure' || steps.build.outcome == 'failure'
+        run: exit 1
