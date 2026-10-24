@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:ui' show FontFeature;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models.dart';
 import '../services/app_state.dart';
 import '../services/native_bridge.dart';
 import 'partner_screen.dart';

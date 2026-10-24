@@ -93,12 +93,12 @@ class _ScanScreenState extends State<_ScanScreen> {
         final raw = cap.barcodes.first.rawValue;
         if (_handled || raw == null || !raw.startsWith('foco://pair/')) return;
         _handled = true;
+        final s = context.read<AppState>();
         final pin = await _askPin(context);
         if (pin == null) {
           _handled = false;
           return;
         }
-        final s = context.read<AppState>();
         try {
           await s.partner.acceptInvite(raw, pin);
           s.refresh();
