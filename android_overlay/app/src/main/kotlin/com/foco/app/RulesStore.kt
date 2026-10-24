@@ -89,8 +89,12 @@ object RulesStore {
             if (insideGeofence(ctx, prof)) return true
 
             // Limite diário por app
-            val limit = prof.optJSONObject("dailyLimitMinutes")?.optInt(pkg, 0) ?: 0
-            if (limit > 0 && usageTodayMinutes(ctx, pkg) >= limit) return true
+            // Limite diário: ausente = sem limite; 0 = bloqueado o dia todo
+            val lims = prof.optJSONObject("dailyLimitMinutes")
+            if (lims != null && lims.has(pkg)) {
+                val limit = lims.optInt(pkg, 0)
+                if (limit <= 0 || usageTodayMinutes(ctx, pkg) >= limit) return true
+            }
         }
         return false
     }

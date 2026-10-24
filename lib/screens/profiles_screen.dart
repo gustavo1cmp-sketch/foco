@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -60,7 +61,7 @@ class ProfileEditor extends StatefulWidget {
 
 class _ProfileEditorState extends State<ProfileEditor> {
   late FocusProfile p = widget.profile;
-  List<Map<String, String>> apps = [];
+  List<Map<String, dynamic>> apps = [];
   String? appsError;
   bool loadingApps = true;
 
@@ -72,6 +73,53 @@ class _ProfileEditorState extends State<ProfileEditor> {
     }).catchError((e) {
       if (mounted) setState(() { appsError = '$e'; loadingApps = false; });
     });
+  }
+
+  Widget _appTile(Map<String, dynamic> a) {
+    final pkg = a['package'] as String;
+    final label = (a['label'] as String?) ?? pkg;
+    final icon = a['icon'];
+    final selected = p.blockedApps.contains(pkg);
+    final limit = p.dailyLimitMinutes[pkg];
+    return CheckboxListTile(
+      controlAffinity: ListTileControlAffinity.trailing,
+      value: selected,
+      secondary: (icon is Uint8List && icon.isNotEmpty)
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.memory(icon, width: 44, height: 44, gaplessPlayback: true),
+            )
+          : const Icon(Icons.android, size: 44),
+      title: Text(label),
+      subtitle: selected
+          ? Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: SizedBox(
+                height: 44,
+                child: TextFormField(
+                  initialValue: limit?.toString() ?? '',
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    labelText: 'Limite por dia (min)',
+                    hintText: 'vazio = só nos horários; 0 = sempre',
+                  ),
+                  onChanged: (v) {
+                    final m = {...p.dailyLimitMinutes};
+                    final n = int.tryParse(v);
+                    n == null ? m.remove(pkg) : m[pkg] = n;
+                    p.dailyLimitMinutes = m;
+                  },
+                ),
+              ),
+            )
+          : null,
+      onChanged: (v) => setState(() {
+        final l = [...p.blockedApps];
+        v! ? l.add(pkg) : l.remove(pkg);
+        p.blockedApps = l;
+      }),
+    );
   }
 
   @override
@@ -148,32 +196,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
                 : 'Nenhum app encontrado.'),
           )
         else
-          for (final a in apps)
-            CheckboxListTile(
-              title: Text(a['label'] ?? a['package']!),
-              subtitle: Text(a['package']!),
-              value: p.blockedApps.contains(a['package']),
-              secondary: p.blockedApps.contains(a['package'])
-                  ? SizedBox(
-                      width: 90,
-                      child: TextFormField(
-                        initialValue:
-                            (p.dailyLimitMinutes[a['package']] ?? 0).toString(),
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(suffixText: 'min/dia'),
-                        onChanged: (v) => p.dailyLimitMinutes = {
-                          ...p.dailyLimitMinutes,
-                          a['package']!: int.tryParse(v) ?? 0,
-                        },
-                      ),
-                    )
-                  : null,
-              onChanged: (v) => setState(() {
-                final l = [...p.blockedApps];
-                v! ? l.add(a['package']!) : l.remove(a['package']);
-                p.blockedApps = l;
-              }),
-            ),
+          for (final a in apps) _appTile(a),
       ]),
     );
   }

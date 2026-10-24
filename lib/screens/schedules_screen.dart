@@ -25,7 +25,7 @@ class SchedulesScreen extends StatelessWidget {
               title: Text('${_t(sc.startMinutes)} – ${_t(sc.endMinutes)}'),
               subtitle: Text(
                 '${sc.weekdays.map((d) => _days[d - 1]).join(', ')}\n'
-                'Perfil: ${s.profiles.firstWhere((p) => p.id == sc.profileId, orElse: () => s.profiles.first).name}',
+                'Perfil: ${_profileInfo(s, sc)}',
               ),
               isThreeLine: true,
               value: sc.enabled,
@@ -53,6 +53,12 @@ class SchedulesScreen extends StatelessWidget {
     );
   }
 
+  String _profileInfo(AppState s, Schedule sc) {
+    final p = s.profiles.firstWhere((p) => p.id == sc.profileId,
+        orElse: () => s.profiles.first);
+    return '${p.name} (${p.blockedApps.length} apps bloqueados)';
+  }
+
   String _t(int m) =>
       '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
 
@@ -62,7 +68,7 @@ class SchedulesScreen extends StatelessWidget {
         Schedule(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           profileId: s.profiles.first.id,
-          weekdays: [1, 2, 3, 4, 5],
+          weekdays: [1, 2, 3, 4, 5, 6, 7],
           startMinutes: 9 * 60,
           endMinutes: 18 * 60,
         );

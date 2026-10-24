@@ -5,7 +5,11 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 import android.net.Uri
+import java.io.ByteArrayOutputStream
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
@@ -22,19 +26,23 @@ class MainActivity : FlutterActivity() {
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "installedApps" -> {
-                    val pm = packageManager
-                    val launch = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                    val list = pm.queryIntentActivities(launch, 0)
-                        .filter { it.activityInfo.packageName != packageName }
-                        .map {
-                            mapOf(
-                                "package" to it.activityInfo.packageName,
-                                "label" to it.loadLabel(pm).toString(),
-                            )
-                        }
-                        .distinctBy { it["package"] }
-                        .sortedBy { it["label"]?.lowercase() }
-                    result.success(list)
+                    Thread {
+                        val pm = packageManager
+                        val launch = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                        val list = pm.queryIntentActivities(launch, 0)
+                            .filter { it.activityInfo.packageName != packageName }
+                            .distinctBy { it.activityInfo.packageName }
+                            .sortedBy { it.loadLabel(pm).toString().lowercase() }
+                            .map {
+                                val icon = try { iconBytes(it.loadIcon(pm)) } catch (e: Exception) { ByteArray(0) }
+                                mapOf(
+                                    "package" to it.activityInfo.packageName,
+                                    "label" to it.loadLabel(pm).toString(),
+                                    "icon" to icon,
+                                )
+                            }
+                        runOnUiThread { result.success(list) }
+                    }.start()
                 }
                 "permissions" -> result.success(permissionState())
                 "requestPermission" -> {
@@ -77,6 +85,16 @@ class MainActivity : FlutterActivity() {
         i?.getStringExtra("blocked_target")?.let {
             if (::channel.isInitialized) channel.invokeMethod("blockedAttempt", it)
         }
+    }
+
+    private fun iconBytes(d: Drawable): ByteArray {
+        val size = 96
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        d.setBounds(0, 0, size, size)
+        d.draw(Canvas(bmp))
+        val out = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+        return out.toByteArray()
     }
 
     private fun permissionState(): Map<String, Boolean> {

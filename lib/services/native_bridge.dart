@@ -7,10 +7,10 @@ class NativeBridge {
   static const _ch = MethodChannel('foco/native');
 
   /// Android: lista de apps instalados {package, label}.
-  static Future<List<Map<String, String>>> installedApps() async {
+  static Future<List<Map<String, dynamic>>> installedApps() async {
     if (!Platform.isAndroid) return [];
     final r = await _ch.invokeListMethod<Map>('installedApps') ?? [];
-    return r.map((e) => Map<String, String>.from(e)).toList();
+    return r.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   /// Retorna o estado das permissões necessárias.
