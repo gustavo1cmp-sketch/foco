@@ -61,11 +61,17 @@ class ProfileEditor extends StatefulWidget {
 class _ProfileEditorState extends State<ProfileEditor> {
   late FocusProfile p = widget.profile;
   List<Map<String, String>> apps = [];
+  String? appsError;
+  bool loadingApps = true;
 
   @override
   void initState() {
     super.initState();
-    NativeBridge.installedApps().then((v) => setState(() => apps = v));
+    NativeBridge.installedApps().then((v) {
+      if (mounted) setState(() { apps = v; loadingApps = false; });
+    }).catchError((e) {
+      if (mounted) setState(() { appsError = '$e'; loadingApps = false; });
+    });
   }
 
   @override
@@ -131,6 +137,15 @@ class _ProfileEditorState extends State<ProfileEditor> {
               final sel = await NativeBridge.pickAppsIOS(p.id);
               if (sel != null) setState(() => p.blockedApps = [sel]);
             },
+          )
+        else if (loadingApps)
+          const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+        else if (apps.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(appsError != null
+                ? 'Não foi possível listar os apps: $appsError'
+                : 'Nenhum app encontrado.'),
           )
         else
           for (final a in apps)

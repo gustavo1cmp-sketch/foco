@@ -20,7 +20,11 @@ jobs:
       - name: Gerar android/ e ios/ e aplicar overlays
         run: |
           flutter create --org com.foco --project-name foco --platforms=android,ios .
+          # O código nativo usa o pacote com.foco.app: alinha o app gerado a ele
+          rm -rf android/app/src/main/kotlin/com/foco/foco android/app/src/main/java
+          grep -rl "com.foco.foco" android --include=*.gradle --include=*.kts --include=*.xml | xargs -r sed -i 's/com\.foco\.foco/com.foco.app/g'
           cp -R android_overlay/app/src/main/* android/app/src/main/
+          grep -rn "com.foco" android/app/build.gradle* | head
           cp -R ios_overlay/Runner/* ios/Runner/
           rm -f test/widget_test.dart
           flutter pub get 2>&1 | tee /tmp/pub.txt
