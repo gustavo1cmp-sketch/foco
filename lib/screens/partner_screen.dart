@@ -28,7 +28,18 @@ class _PartnerScreenState extends State<PartnerScreen> {
         'Você só consegue liberar apps, encerrar sessões ou mudar regras se ela aprovar.',
       ),
       const SizedBox(height: 20),
-      if (role == PairRole.none) ...[
+      if (!s.firebaseOk || s.initError != null)
+        Card(
+          color: Theme.of(context).colorScheme.errorContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(!s.firebaseOk
+                ? 'O Firebase ainda não foi configurado neste app (falta o google-services.json). '
+                    'O bloqueio de apps funciona, mas o Parceiro de confiança só será ativado depois dessa configuração.'
+                : '${s.initError}'),
+          ),
+        )
+      else if (role == PairRole.none) ...[
         FilledButton.icon(
           icon: const Icon(Icons.qr_code),
           label: const Text('Convidar um parceiro (mostrar QR)'),

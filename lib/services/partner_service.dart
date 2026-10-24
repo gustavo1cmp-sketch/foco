@@ -17,10 +17,10 @@ enum PairRole { none, owner, partner }
 /// O Firestore (ver firestore.rules) impede que o dono altere o status
 /// de um pedido, apague o pareamento ou aprove a si mesmo.
 class PartnerService {
-  final _db = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  late final _db = FirebaseFirestore.instance;
+  late final _auth = FirebaseAuth.instance;
   final _secure = const FlutterSecureStorage();
-  final _localAuth = LocalAuthentication();
+  late final _localAuth = LocalAuthentication();
 
   String? pairId;
   PairRole role = PairRole.none;

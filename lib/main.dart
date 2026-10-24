@@ -6,9 +6,21 @@ import 'services/app_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // usa google-services.json / GoogleService-Info.plist
-  final state = AppState();
-  await state.init();
+  // Sem google-services.json o Firebase falha: o app abre mesmo assim,
+  // só o Parceiro de confiança fica indisponível.
+  var firebaseOk = true;
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    firebaseOk = false;
+  }
+  final state = AppState(firebaseOk: firebaseOk);
+  try {
+    await state.init();
+  } catch (e) {
+    state.initError = '$e';
+    state.ready = true;
+  }
   runApp(ChangeNotifierProvider.value(value: state, child: const FocoApp()));
 }
 

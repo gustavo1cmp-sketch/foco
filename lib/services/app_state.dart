@@ -7,6 +7,11 @@ import 'partner_service.dart';
 
 /// Estado global: perfis, agendamentos, sessão ativa e fluxo de desbloqueio.
 class AppState extends ChangeNotifier {
+  AppState({this.firebaseOk = true});
+
+  /// false quando o Firebase não está configurado (sem google-services.json).
+  final bool firebaseOk;
+  String? initError;
   final PartnerService partner = PartnerService();
   List<FocusProfile> profiles = [];
   List<Schedule> schedules = [];
@@ -19,7 +24,13 @@ class AppState extends ChangeNotifier {
 
   Future<void> init() async {
     _p = await SharedPreferences.getInstance();
-    await partner.init();
+    if (firebaseOk) {
+      try {
+        await partner.init();
+      } catch (e) {
+        initError = 'Parceiro indisponível: $e';
+      }
+    }
     final pr = _p.getString('profiles');
     final sc = _p.getString('schedules');
     profiles = pr == null
@@ -34,7 +45,9 @@ class AppState extends ChangeNotifier {
     }
     NativeBridge.onBlockedAttempt((t) => lastBlockedTarget.value = t);
     ready = true;
-    await _push();
+    try {
+      await _push();
+    } catch (_) {}
     notifyListeners();
   }
 
